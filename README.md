@@ -12,7 +12,7 @@ Native Swift SDK for Mite. Bug reporting and releases for iOS apps.
 Add the package in Xcode, or in `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/<you>/mite-ios-sdk.git", from: "0.1.0")
+.package(url: "https://github.com/usemite/mite-ios-sdk.git", from: "0.1.0")
 ```
 
 ## Configure
