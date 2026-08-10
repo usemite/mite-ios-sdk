@@ -15,7 +15,7 @@ struct ReleasesView: View {
                 }
                 ForEach(releases, id: \.id) { release in
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("\(release.version) (\(release.versionCode))")
+                        Text(release.version)
                             .font(.headline)
                         Text(release.platform.rawValue)
                             .font(.caption)
