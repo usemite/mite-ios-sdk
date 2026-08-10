@@ -93,3 +93,22 @@ swift test
 
 The design spec is in
 [docs/superpowers/specs/2026-08-09-mite-ios-sdk-v1-design.md](docs/superpowers/specs/2026-08-09-mite-ios-sdk-v1-design.md).
+
+## Example app
+
+An example app is in `Examples/MiteExample`. It exercises bug reports
+with an attachment, releases, identity, quota callbacks, and the
+offline queue.
+
+1. Open `Examples/MiteExample/MiteExample.xcodeproj` in Xcode 16 or later.
+2. Run the `MiteExample` scheme on an iOS 16+ simulator.
+3. Open the Settings tab. Enter your API key. Tap Apply.
+
+Or build from the command line:
+
+```bash
+xcodebuild -project Examples/MiteExample/MiteExample.xcodeproj \
+  -scheme MiteExample \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO build
+```
