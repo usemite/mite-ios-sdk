@@ -93,6 +93,8 @@ struct IdentityView: View {
 
     private func setOptOut(_ value: Bool) {
         Task {
+            let current = await Mite.shared.isIdentificationOptedOut
+            guard current != value else { return }
             await Mite.shared.setIdentificationOptOut(value)
             statusText = value ? "Identification opted out." : "Identification allowed."
             await refresh()

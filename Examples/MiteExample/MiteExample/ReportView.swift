@@ -61,16 +61,21 @@ struct ReportView: View {
     }
 
     private func loadAttachment(_ item: PhotosPickerItem?) {
-        guard let item else {
-            attachmentURL = nil
-            return
-        }
+        attachmentURL = nil
+        guard let item else { return }
         Task {
-            guard let data = try? await item.loadTransferable(type: Data.self) else { return }
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("mite-attachment.jpg")
-            try? data.write(to: url)
-            attachmentURL = url
+            do {
+                guard let data = try await item.loadTransferable(type: Data.self) else {
+                    errorText = "Could not load the picked image."
+                    return
+                }
+                let url = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("mite-attachment.jpg")
+                try data.write(to: url)
+                attachmentURL = url
+            } catch {
+                errorText = "Could not load the picked image."
+            }
         }
     }
 
