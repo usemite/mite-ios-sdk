@@ -5,4 +5,3 @@ import SwiftUI
 struct ReportView: View { var body: some View { Text("Report") } }
 struct ReleasesView: View { var body: some View { Text("Releases") } }
 struct IdentityView: View { var body: some View { Text("Identity") } }
-struct SettingsView: View { var body: some View { Text("Settings") } }
