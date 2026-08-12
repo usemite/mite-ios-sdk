@@ -1,13 +1,16 @@
 import SwiftUI
+import Mite
 
 struct ContentView: View {
     @EnvironmentObject private var settings: AppSettings
+    @StateObject private var announcementController = MiteAnnouncementController()
 
     var body: some View {
         TabView {
             ReportView()
                 .tabItem { Label("Report", systemImage: "ladybug") }
             ReleasesView()
+                .environmentObject(announcementController)
                 .tabItem { Label("Releases", systemImage: "shippingbox") }
             IdentityView()
                 .tabItem { Label("Identity", systemImage: "person.crop.circle") }
@@ -23,5 +26,6 @@ struct ContentView: View {
                     .background(.yellow.opacity(0.3))
             }
         }
+        .miteAnnouncementPopup(controller: announcementController)
     }
 }

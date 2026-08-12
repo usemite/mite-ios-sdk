@@ -2,6 +2,7 @@ import SwiftUI
 import Mite
 
 struct ReleasesView: View {
+    @EnvironmentObject private var announcementController: MiteAnnouncementController
     @State private var releases: [Release] = []
     @State private var errorText: String?
     @State private var isLoading = false
@@ -34,6 +35,12 @@ struct ReleasesView: View {
             .refreshable { await load() }
             .task { await load() }
             .navigationTitle("Releases")
+            .toolbar {
+                Button("Announcement") {
+                    announcementController.show()
+                }
+                .accessibilityIdentifier("example.showAnnouncement")
+            }
         }
     }
 
