@@ -1,9 +1,10 @@
 # Mite iOS SDK
 
-Native Swift SDK for Mite. Bug reporting and releases for iOS apps.
+Native Swift SDK for Mite. Bug reporting, releases, and in-app announcements
+for iOS apps.
 
 - Swift Package Manager, iOS 15+, no dependencies.
-- `async/await` API. All state lives in an actor.
+- `async/await` API. Client state is actor-isolated.
 - A plan quota refusal is a value, not a thrown error.
 - An in-memory offline queue retries bug reports after network faults.
 
@@ -55,6 +56,44 @@ seconds. Attachments are not queued.
 
 ```swift
 let releases = try await Mite.shared.getReleases(platform: .ios, limit: 10)
+```
+
+## Announcements
+
+Mount the SwiftUI popup once near the root of your app. It fetches the newest
+active iOS announcement and shows it once per device:
+
+```swift
+ContentView()
+    .miteAnnouncementPopup()
+```
+
+To let users re-open the latest announcement, own a controller and pass it to
+the modifier:
+
+```swift
+@StateObject private var announcements = MiteAnnouncementController()
+
+var body: some View {
+    ContentView()
+        .miteAnnouncementPopup(controller: announcements)
+        .toolbar {
+            Button("Latest announcement") { announcements.show() }
+        }
+}
+```
+
+The popup renders Markdown, follows the system appearance, and opens an
+optional CTA URL. Dismissed IDs are kept in the configured
+`MiteIdentityStorage` under `@mite/sdk-seen-announcements`.
+
+The lower-level API is also available for custom interfaces:
+
+```swift
+let active = try await Mite.shared.getAnnouncements(platform: .ios, limit: 5)
+let seen = await Mite.shared.getSeenAnnouncementIds()
+await Mite.shared.markAnnouncementSeen(active[0].id)
+await Mite.shared.clearSeenAnnouncements()
 ```
 
 ## Identity

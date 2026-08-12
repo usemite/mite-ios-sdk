@@ -6,6 +6,7 @@ public actor MiteClient {
     private let config: MiteConfig
     private let apiClient: APIClient
     private let identityStore: IdentityStore
+    private let announcementStore: AnnouncementStore
     private let deviceInfo: [String: String]
     private var offlineQueue: OfflineQueue?
 
@@ -28,9 +29,9 @@ public actor MiteClient {
             apiKey: config.apiKey,
             session: session
         )
-        self.identityStore = IdentityStore(
-            storage: config.identityStorage ?? UserDefaultsIdentityStorage()
-        )
+        let storage = config.identityStorage ?? UserDefaultsIdentityStorage()
+        self.identityStore = IdentityStore(storage: storage)
+        self.announcementStore = AnnouncementStore(storage: storage)
         self.deviceInfo = DeviceInfo.collect()
 
         // Hydrate identity. Config overrides win over persisted state.
@@ -214,6 +215,47 @@ public actor MiteClient {
 
         let response: ReleasesResponse = try await apiClient.get("/api/v1/releases", query: query)
         return response.releases
+    }
+
+    // MARK: - Announcements
+
+    /// Fetches currently active announcements for the application, newest
+    /// first. The server excludes drafts and announcements outside their
+    /// optional schedule window.
+    public func getAnnouncements(
+        platform: ReleasePlatform? = nil,
+        limit: Int? = nil
+    ) async throws -> [Announcement] {
+        try requireAPIKey("fetch announcements")
+
+        var query: [URLQueryItem] = []
+        if let platform {
+            query.append(URLQueryItem(name: "platform", value: platform.rawValue))
+        }
+        if let limit {
+            query.append(URLQueryItem(name: "limit", value: String(limit)))
+        }
+
+        let response: AnnouncementsResponse = try await apiClient.get(
+            "/api/v1/announcements",
+            query: query
+        )
+        return response.announcements
+    }
+
+    /// IDs of announcements dismissed on this device.
+    public func getSeenAnnouncementIds() -> [String] {
+        announcementStore.seenIDs()
+    }
+
+    /// Records an announcement as seen, so it is not shown automatically again.
+    public func markAnnouncementSeen(_ id: String) {
+        announcementStore.markSeen(id)
+    }
+
+    /// Forgets every seen announcement. Useful from a debug menu.
+    public func clearSeenAnnouncements() {
+        announcementStore.clear()
     }
 
     // MARK: - Offline queue

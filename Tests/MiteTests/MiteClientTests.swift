@@ -222,4 +222,92 @@ final class MiteClientTests: XCTestCase {
         XCTAssertEqual(url?.query?.contains("platform=ios"), true)
         XCTAssertEqual(url?.query?.contains("limit=5"), true)
     }
+
+    // MARK: - Announcements
+
+    func testGetAnnouncementsSendsQueryAndDecodes() async throws {
+        StubURLProtocol.responder = { _ in
+            .success((200, Data("""
+            {"announcements":[{"id":"ann1","title":"Scheduled maintenance",
+            "content":"**Tonight** at 9 PM.","platform":"ios",
+            "ctaLabel":"Status","ctaUrl":"https://status.example.com",
+            "publishedAt":1700000000000,"updatedAt":1700000001000,
+            "createdAt":1699999999000}]}
+            """.utf8)))
+        }
+        let client = makeClient()
+
+        let announcements = try await client.getAnnouncements(platform: .ios, limit: 5)
+
+        XCTAssertEqual(announcements.count, 1)
+        XCTAssertEqual(announcements.first?.id, "ann1")
+        XCTAssertEqual(announcements.first?.title, "Scheduled maintenance")
+        XCTAssertEqual(announcements.first?.content, "**Tonight** at 9 PM.")
+        XCTAssertEqual(announcements.first?.platform, .ios)
+        XCTAssertEqual(announcements.first?.ctaLabel, "Status")
+        XCTAssertEqual(announcements.first?.ctaUrl, "https://status.example.com")
+
+        let request = StubURLProtocol.recorded.last
+        XCTAssertEqual(request?.url.path, "/api/v1/announcements")
+        XCTAssertEqual(request?.url.query?.contains("platform=ios"), true)
+        XCTAssertEqual(request?.url.query?.contains("limit=5"), true)
+    }
+
+    func testGetAnnouncementsWithoutAPIKeyThrows() async {
+        let client = makeClient(config: makeTestConfig(apiKey: nil))
+
+        do {
+            _ = try await client.getAnnouncements()
+            XCTFail("Expected a thrown error")
+        } catch {
+            guard case MiteError.missingAPIKey = error else {
+                return XCTFail("Expected missingAPIKey, got \(error)")
+            }
+        }
+    }
+
+    func testSeenAnnouncementsPersistWithoutDuplicatesAndCanBeCleared() async {
+        let storage = MemoryIdentityStorage()
+        let client = makeClient(config: makeTestConfig(storage: storage))
+
+        await client.markAnnouncementSeen("ann_1")
+        await client.markAnnouncementSeen("ann_2")
+        await client.markAnnouncementSeen("ann_1")
+
+        var seen = await client.getSeenAnnouncementIds()
+        XCTAssertEqual(seen, ["ann_1", "ann_2"])
+
+        await client.clearSeenAnnouncements()
+        seen = await client.getSeenAnnouncementIds()
+        XCTAssertEqual(seen, [])
+    }
+
+    func testSeenAnnouncementsKeepNewestOneHundredIDs() async {
+        let client = makeClient()
+
+        for index in 0..<105 {
+            await client.markAnnouncementSeen("ann_\(index)")
+        }
+
+        let seen = await client.getSeenAnnouncementIds()
+        XCTAssertEqual(seen.count, 100)
+        XCTAssertEqual(seen.first, "ann_5")
+        XCTAssertEqual(seen.last, "ann_104")
+    }
+
+    func testSeenAnnouncementsIgnoreCorruptAndNonStringValues() async {
+        let storage = MemoryIdentityStorage()
+        let client = makeClient(config: makeTestConfig(storage: storage))
+
+        storage.setItem(AnnouncementStore.storageKey, "not json")
+        var seen = await client.getSeenAnnouncementIds()
+        XCTAssertEqual(seen, [])
+
+        storage.setItem(
+            AnnouncementStore.storageKey,
+            #"["ann_1",42,null,"ann_2"]"#
+        )
+        seen = await client.getSeenAnnouncementIds()
+        XCTAssertEqual(seen, ["ann_1", "ann_2"])
+    }
 }

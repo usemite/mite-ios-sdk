@@ -1,20 +1,22 @@
 # Mite iOS SDK v1 — Design
 
 Date: 2026-08-09
-Status: Approved
+Status: Implemented; extended with announcements on 2026-08-11
 
 ## Goal
 
 A native Swift SDK for iOS apps. It mirrors the core of the React Native
-`mite-sdk`. Version 1 ships bug reporting and releases. It does not ship
-shake detection, feature requests, store review, What's New, or UI.
+`mite-sdk`. Version 1 initially shipped bug reporting and releases. In-app
+announcements, including an optional SwiftUI presentation layer, were added on
+2026-08-11. It does not ship shake detection, feature requests, store review,
+or What's New.
 
 ## Decisions
 
 - Distribution: Swift Package Manager only.
 - Minimum iOS: 15. Swift 5.9.
 - API shape: instance (`MiteClient`) plus a shared singleton entry (`Mite`).
-- UI: none. API only.
+- UI: announcement UI only. The rest of the SDK remains API-only.
 - Offline queue: in-memory only, same as the RN SDK.
 - No third-party dependencies. `URLSession` + `Codable`.
 - The package also declares macOS as a platform so `swift test` runs on a
@@ -28,7 +30,9 @@ shake detection, feature requests, store review, What's New, or UI.
   `identificationOptOut` (false), `enableOfflineQueue` (true),
   `onQuotaExceeded` closure.
 - `MiteClient` (actor) — `submitBug`, `identify`, `logout`,
-  `setIdentificationOptOut`, `getReleases`, `flushOfflineQueue`,
+  `setIdentificationOptOut`, `getReleases`, `getAnnouncements`,
+  `getSeenAnnouncementIds`, `markAnnouncementSeen`,
+  `clearSeenAnnouncements`, `flushOfflineQueue`,
   `anonymousId`, `userIdentifier`, `isIdentificationOptedOut`,
   `pendingRequestCount`. All async.
 - `Mite` — `Mite.configure(_:)` creates the shared instance. `Mite.shared`
@@ -38,10 +42,13 @@ shake detection, feature requests, store review, What's New, or UI.
   faults and bad configuration throw `MiteError`.
 - Models: `BugReportPayload`, `BugReportResponse`, `MiteAttachment`
   (local file URL + type + name), `Release`, `ReleasePlatform`,
-  `IdentifyPayload`, `IdentifyResponse`, `MiteQuotaRefusal`, `MiteQuota`,
-  `MiteQuotaCode`.
+  `Announcement`, `IdentifyPayload`, `IdentifyResponse`, `MiteQuotaRefusal`,
+  `MiteQuota`, `MiteQuotaCode`.
 - `MiteIdentityStorage` protocol. Default implementation uses
   `UserDefaults`.
+- `MiteAnnouncementController`, `MiteAnnouncementView`, and
+  `View.miteAnnouncementPopup` provide the show-once state machine and SwiftUI
+  presentation.
 
 ## Internal units
 
@@ -89,6 +96,17 @@ shake detection, feature requests, store review, What's New, or UI.
 
 - `getReleases(platform:limit:)` calls `GET /api/v1/releases` with query
   parameters. Returns `[Release]`.
+
+## Announcements
+
+- `getAnnouncements(platform:limit:)` calls `GET /api/v1/announcements` and
+  returns the server-filtered active announcements, newest first.
+- Seen IDs share the configured identity storage under
+  `@mite/sdk-seen-announcements`, are de-duplicated, and retain the newest 100.
+- The SwiftUI controller automatically presents only the newest unseen
+  announcement. Older unseen announcements never form a popup backlog.
+- Manual `show()` re-opens the latest announcement even after it was seen.
+- The sheet renders the Markdown body, optional CTA URL, and system appearance.
 
 ## Error model
 
