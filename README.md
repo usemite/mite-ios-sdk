@@ -7,6 +7,7 @@ for iOS apps.
 - `async/await` API. Client state is actor-isolated.
 - A plan quota refusal is a value, not a thrown error.
 - An in-memory offline queue retries bug reports after network faults.
+- Reports carry the current screen, the last error and the network state.
 
 ## Install
 
@@ -51,6 +52,32 @@ case .refused(let refusal):
 Network faults throw `MiteError`. When the offline queue is on (default),
 a report that fails with a network fault is queued and retried each 30
 seconds. Attachments are not queued.
+
+## Triage context
+
+Every bug report carries the current screen, the last recorded error and the
+network state as named keys inside `environment`: `current_route`,
+`last_error_message`, `last_error_stack` and `network_state`. A key you pass
+in `BugReportPayload.environment` yourself wins over the collected value, and
+an unknown value is left out.
+
+```swift
+Mite.shared.recordScreen("Checkout")
+Mite.shared.recordError(error)
+```
+
+In SwiftUI, record the screen as the view appears:
+
+```swift
+CheckoutView()
+    .miteScreen("Checkout")
+```
+
+Network state is read with `NWPathMonitor` as `wifi`, `cellular`, `wired`,
+`other` or `none`, with a `/offline` suffix while the path is unsatisfied.
+An uncaught exception is persisted and rides on the first report after the
+crash. Turn either source off with `MiteConfig(monitorNetworkState:)` and
+`MiteConfig(captureUncaughtExceptions:)`.
 
 ## Releases
 

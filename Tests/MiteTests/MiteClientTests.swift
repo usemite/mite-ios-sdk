@@ -39,6 +39,47 @@ final class MiteClientTests: XCTestCase {
         XCTAssertNotNil(body?["device_info"])
     }
 
+    func testTriageContextRidesOnTheReportEnvironment() async throws {
+        StubURLProtocol.responder = successResponder
+        let client = makeClient()
+
+        client.recordScreen("CheckoutScreen")
+        client.recordError(MiteError.invalidResponse)
+
+        _ = try await client.submitBug(BugReportPayload(title: "t", description: "d"))
+
+        let environment = StubURLProtocol.recorded.last?.bodyJSON?["environment"] as? [String: String]
+        XCTAssertEqual(environment?["current_route"], "CheckoutScreen")
+        XCTAssertEqual(environment?["last_error_message"]?.contains("invalidResponse"), true)
+        XCTAssertNotNil(environment?["last_error_stack"])
+    }
+
+    func testAppEnvironmentOverridesCollectedTriageKeys() async throws {
+        StubURLProtocol.responder = successResponder
+        let client = makeClient()
+
+        client.recordScreen("CheckoutScreen")
+
+        _ = try await client.submitBug(BugReportPayload(
+            title: "t",
+            description: "d",
+            environment: ["current_route": "AppSuppliedScreen", "build": "42"]
+        ))
+
+        let environment = StubURLProtocol.recorded.last?.bodyJSON?["environment"] as? [String: String]
+        XCTAssertEqual(environment?["current_route"], "AppSuppliedScreen")
+        XCTAssertEqual(environment?["build"], "42")
+    }
+
+    func testEnvironmentIsAbsentWhenNothingWasRecorded() async throws {
+        StubURLProtocol.responder = successResponder
+        let client = makeClient()
+
+        _ = try await client.submitBug(BugReportPayload(title: "t", description: "d"))
+
+        XCTAssertNil(StubURLProtocol.recorded.last?.bodyJSON?["environment"])
+    }
+
     func testSubmitBugWithoutAPIKeyThrows() async {
         let client = makeClient(config: makeTestConfig(apiKey: nil))
 
