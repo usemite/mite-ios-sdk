@@ -7,8 +7,12 @@ public actor MiteClient {
     private let apiClient: APIClient
     private let identityStore: IdentityStore
     private let announcementStore: AnnouncementStore
+    private let triageContext: TriageContext
     private let deviceInfo: [String: String]
     private var offlineQueue: OfflineQueue?
+    #if canImport(Network)
+    private var networkMonitor: NetworkStateMonitor?
+    #endif
 
     private var currentAnonymousId: String
     private var currentUserIdentifier: String?
@@ -32,6 +36,7 @@ public actor MiteClient {
         let storage = config.identityStorage ?? UserDefaultsIdentityStorage()
         self.identityStore = IdentityStore(storage: storage)
         self.announcementStore = AnnouncementStore(storage: storage)
+        self.triageContext = TriageContext(storage: storage)
         self.deviceInfo = DeviceInfo.collect()
 
         // Hydrate identity. Config overrides win over persisted state.
@@ -59,6 +64,18 @@ public actor MiteClient {
             userIdentifier: identificationOptOut ? nil : currentUserIdentifier,
             identificationOptOut: identificationOptOut
         ))
+
+        #if canImport(ObjectiveC)
+        if config.captureUncaughtExceptions {
+            UncaughtExceptionTrap.install(recordingInto: triageContext)
+        }
+        #endif
+
+        #if canImport(Network)
+        if config.monitorNetworkState {
+            self.networkMonitor = NetworkStateMonitor(context: triageContext)
+        }
+        #endif
 
         if config.syncIdentityOnStart, config.apiKey != nil {
             Task { [weak self] in
@@ -141,6 +158,21 @@ public actor MiteClient {
 
             throw error
         }
+    }
+
+    // MARK: - Triage context
+
+    /// Records the screen the user is on. The next bug report carries it as
+    /// `current_route`. An empty name is ignored.
+    public nonisolated func recordScreen(_ name: String) {
+        triageContext.recordScreen(name)
+    }
+
+    /// Records a caught error and the call stack at this point. The next bug
+    /// report carries them as `last_error_message` and `last_error_stack`.
+    /// The record is persisted, so it survives a crash.
+    public nonisolated func recordError(_ error: Error) {
+        triageContext.recordError(error)
     }
 
     // MARK: - Identity
@@ -275,6 +307,10 @@ public actor MiteClient {
     /// Stops the offline queue and clears it.
     public func shutdown() async {
         await offlineQueue?.shutdown()
+        #if canImport(Network)
+        networkMonitor?.cancel()
+        networkMonitor = nil
+        #endif
         reportQuotaRefusal = nil
     }
 
@@ -353,6 +389,9 @@ public actor MiteClient {
         _ payload: BugReportPayload,
         attachments: [UploadedAttachment]?
     ) -> BugReportWire {
+        let environment = triageContext.snapshot()
+            .merging(payload.environment ?? [:]) { _, app in app }
+
         var wire = BugReportWire(
             title: payload.title,
             description: payload.description,
@@ -361,7 +400,7 @@ public actor MiteClient {
             expected_behavior: payload.expectedBehavior,
             actual_behavior: payload.actualBehavior,
             app_version: payload.appVersion,
-            environment: payload.environment,
+            environment: environment.isEmpty ? nil : environment,
             attachments: attachments
         )
 

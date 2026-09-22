@@ -139,6 +139,8 @@ func makeTestConfig(
         identificationOptOut: identificationOptOut,
         enableOfflineQueue: enableOfflineQueue,
         syncIdentityOnStart: false,
+        captureUncaughtExceptions: false,
+        monitorNetworkState: false,
         identityStorage: storage,
         onQuotaExceeded: onQuotaExceeded
     )

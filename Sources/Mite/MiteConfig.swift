@@ -19,6 +19,11 @@ public struct MiteConfig: Sendable {
     public var enableOfflineQueue: Bool
     /// Sends the current identity to the server once at startup.
     public var syncIdentityOnStart: Bool
+    /// Chains a process-wide uncaught exception handler, so the crash that
+    /// ended the last run rides on the next bug report.
+    public var captureUncaughtExceptions: Bool
+    /// Watches the network path and attaches `network_state` to bug reports.
+    public var monitorNetworkState: Bool
     /// Persisted identity storage. Defaults to `UserDefaults.standard`.
     public var identityStorage: MiteIdentityStorage?
     /// Called each time the server refuses a request because the account has
@@ -34,6 +39,8 @@ public struct MiteConfig: Sendable {
         identificationOptOut: Bool? = nil,
         enableOfflineQueue: Bool = true,
         syncIdentityOnStart: Bool = true,
+        captureUncaughtExceptions: Bool = true,
+        monitorNetworkState: Bool = true,
         identityStorage: MiteIdentityStorage? = nil,
         onQuotaExceeded: (@Sendable (MiteQuotaRefusal) -> Void)? = nil
     ) {
@@ -45,6 +52,8 @@ public struct MiteConfig: Sendable {
         self.identificationOptOut = identificationOptOut
         self.enableOfflineQueue = enableOfflineQueue
         self.syncIdentityOnStart = syncIdentityOnStart
+        self.captureUncaughtExceptions = captureUncaughtExceptions
+        self.monitorNetworkState = monitorNetworkState
         self.identityStorage = identityStorage
         self.onQuotaExceeded = onQuotaExceeded
     }
