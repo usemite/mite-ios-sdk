@@ -1,7 +1,7 @@
 import Foundation
 
 public struct MiteConfig: Sendable {
-    public static let defaultEndpoint = URL(string: "https://intent-okapi-412.convex.site")!
+    public static let defaultEndpoint = URL(string: "https://usemite.com")!
 
     public var apiKey: String?
     public var endpoint: URL
